@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Visualizador de Tabelas Supabase</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    select, table, button { margin-top: 20px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; }
+  </style>
+</head>
+<body>
+  <h2>Visualizador de Tabelas Supabase</h2>
+
+  <label for="tabela">Escolha a tabela:</label>
+  <select id="tabela">
+    <option value="p1">Participações – Projeto 1</option>
+    <option value="p2">Participações – Projeto 2</option>
+  </select>
+
+  <button id="exportar">Exportar para CSV</button>
+
+  <table id="dados">
+    <thead id="cabecalho"></thead>
+    <tbody id="corpo"></tbody>
+  </table>
+
+  <script>
+    const config = {
+      p1: {
+        url: "https://dlhdrtvudixjhjqvdxjy.supabase.co/rest/v1/participacoes?select=*",
+        apikey: "sb_publishable_e0zCdvfX7W57semqzJFmzw_ugChJllg"
+      },
+
+      p2: {
+        url: "https://ghjeykfktlyuppubnnba.supabase.co/rest/v1/participacoes?select=*",
+        apikey: "sb_publishable_5-zACMdWVSowNm-8KMs2Xw_C4c92bnA"
+      }
+    };
+
+    const tabelaSelect = document.getElementById("tabela");
+    const cabecalho = document.getElementById("cabecalho");
+    const corpo = document.getElementById("corpo");
+
+    async function carregarTabela(nome) {
+      const { url, apikey } = config[nome];
+
+      const resposta = await fetch(url, {
+        headers: {
+          apikey: apikey,
+          Authorization: `Bearer ${apikey}`
+        }
+      });
+
+      const dados = await resposta.json();
+      corpo.innerHTML = "";
+      cabecalho.innerHTML = "";
+
+      if (!Array.isArray(dados) || dados.length === 0) {
+        cabecalho.innerHTML = "<tr><th>Nenhum dado encontrado</th></tr>";
+        return;
+      }
+
+      const colunas = Object.keys(dados[0]);
+      cabecalho.innerHTML = "<tr>" + colunas.map(c => `<th>${c}</th>`).join("") + "</tr>";
+
+      dados.forEach(linha => {
+        const tr = document.createElement("tr");
+        colunas.forEach(col => {
+          const td = document.createElement("td");
+          td.textContent = linha[col];
+          tr.appendChild(td);
+        });
+        corpo.appendChild(tr);
+      });
+    }
+
+    function exportarCSV() {
+      let linhas = [];
+      const ths = document.querySelectorAll("#cabecalho th");
+      const tds = document.querySelectorAll("#corpo tr");
+
+      if (ths.length === 0) return;
+
+      // Cabeçalho
+      const header = Array.from(ths).map(th => `"${th.innerText}"`).join(",");
+      linhas.push(header);
+
+      // Linhas
+      tds.forEach(tr => {
+        const cols = Array.from(tr.children).map(td => `"${td.innerText}"`).join(",");
+        linhas.push(cols);
+      });
+
+      const csv = linhas.join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "dados_exportados.csv";
+      link.click();
+    }
+
+    document.getElementById("exportar").addEventListener("click", exportarCSV);
+    tabelaSelect.addEventListener("change", e => carregarTabela(e.target.value));
+
+    carregarTabela(tabelaSelect.value);
+  </script>
+</body>
+</html>
